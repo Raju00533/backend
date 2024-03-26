@@ -16,7 +16,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '14.x'
+        node-version: '20.x'
 
     - name: Install dependencies
       run: npm install
@@ -57,5 +57,5 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: "Bump version and Docker image tag"
-        commit_user_name: "GitHub Actions"
+        commit_user_name: "Raju00533"
         commit_user_email: "raju12ghimire@gmail.com"
