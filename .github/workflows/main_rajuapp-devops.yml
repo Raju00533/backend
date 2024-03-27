@@ -47,14 +47,7 @@ jobs:
 
     - name: Push Docker image
       run: |
-        docker push ${{ steps.tag_image.outputs.TAG }}
-        if [ "${{ steps.tag_image.outputs.ENVIRONMENT }}" == "prod" ]; then
-          docker tag ${{ steps.tag_image.outputs.TAG }} "${IMAGE_NAME}:stable"
-          docker push "${IMAGE_NAME}:stable"
-        elif [ "${{ steps.tag_image.outputs.ENVIRONMENT }}" == "dev" ]; then
-          docker tag ${{ steps.tag_image.outputs.TAG }} "${IMAGE_NAME}:dev"
-          docker push "${IMAGE_NAME}:dev"
-        fi
+        docker push "${TAG}"
 
     - name: Increase version in package.json
       run: |
