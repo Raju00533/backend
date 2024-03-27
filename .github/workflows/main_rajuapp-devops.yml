@@ -34,8 +34,13 @@ jobs:
       id: tag_image
       run: |
         IMAGE_NAME="docker.io/raju00533/backend"
+        IMAGE_NAME="docker.io/raju00533/backend"
         COMMIT_HASH=${{ steps.commit_hash.outputs.hash }}
-        ENVIRONMENT="dev" # Change this accordingly for prod/dev
+        if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          ENVIRONMENT="prod"
+        else
+          ENVIRONMENT="dev"
+        fi
         TAG="${IMAGE_NAME}:${ENVIRONMENT}-${COMMIT_HASH}"
         docker build -t $TAG .
         echo $TAG >> .env
