@@ -23,9 +23,26 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    
+  
+    
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'adopt'
+        java-version: '11'
+    
     - name: SonarQube Scan
-      run: sonar-scanner -Dsonar.projectKey=my_project -Dsonar.sources=. -Dsonar.host.url=http://sonarqube-server:9000 -Dsonar.login=my_token
-
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      run: |
+        sonar-scanner \
+          -Dsonar.projectKey=my_project \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.login=$SONAR_TOKEN
     - name: Build Docker image
       run: docker build -t backend:latest .
 
