@@ -1,4 +1,4 @@
-name: Docker Build and Push
+name: Docker Build, Scan, and Test
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build_and_push_prod:
+  build_scan_test_deploy_prod:
     runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
 
@@ -22,25 +22,39 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+    - name: SonarQube Scan
+      run: sonar-scanner -Dsonar.projectKey=my_project -Dsonar.sources=. -Dsonar.host.url=http://sonarqube-server:9000 -Dsonar.login=my_token
 
-    - name: Get short commit hash
-      id: commit_hash
-      run: echo "::set-output name=hash::$(git rev-parse --short HEAD)"
+    - name: Build Docker image
+      run: docker build -t backend:latest .
 
-    - name: Tag and push Docker image (prod)
+    - name: Trivy Scan
+      run: trivy backend:latest
+
+    - name: Tag Docker image (prod)
+      run: docker tag backend:latest docker.io/raju00533/backend:prod-latest
+
+    - name: Push Docker image (prod)
+      run: docker push docker.io/raju00533/backend:prod-latest
+
+    - name: Run Docker image (prod)
+      run: docker run -d -p 4000:4000 --name backend_prod docker.io/raju00533/backend:prod-latest
+
+    - name: Start OWASP ZAP scan
       run: |
-        IMAGE_NAME="docker.io/raju00533/backend"
-        COMMIT_HASH=${{ steps.commit_hash.outputs.hash }}
-        ENVIRONMENT="prod"
-        TAG="${IMAGE_NAME}:${ENVIRONMENT}-${COMMIT_HASH}"
-        docker build -t $TAG .
-        docker push $TAG
+        zap-baseline.py -t http://localhost:4000 -g gen.conf -r report.html
 
-  build_and_push_dev:
+    - name: ModSecurity Configuration
+      run: |
+        # Copy ModSecurity rules to Nginx configuration directory
+        sudo mkdir -p /etc/nginx/modsecurity
+        sudo cp /rules/*.conf /etc/nginx/modsecurity/
+        # Reload Nginx to apply new ModSecurity rules
+        sudo nginx -t && sudo systemctl reload nginx
+
+  build_scan_test_deploy_dev:
     runs-on: self-hosted
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/dev'
 
     steps:
     - name: Checkout code
@@ -54,29 +68,32 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+    - name: SonarQube Scan
+      run: sonar-scanner -Dsonar.projectKey=my_project -Dsonar.sources=. -Dsonar.host.url=http://sonarqube-server:9000 -Dsonar.login=my_token
 
-    - name: Get short commit hash
-      id: commit_hash
-      run: echo "::set-output name=hash::$(git rev-parse --short HEAD)"
+    - name: Build Docker image
+      run: docker build -t backend:latest .
 
-    - name: Tag and push Docker image (dev)
-      run: |
-        IMAGE_NAME="docker.io/raju00533/backend"
-        COMMIT_HASH=${{ steps.commit_hash.outputs.hash }}
-        ENVIRONMENT="dev"
-        TAG="${IMAGE_NAME}:${ENVIRONMENT}-${COMMIT_HASH}"
-        docker build -t $TAG .
-        docker push $TAG
-  
+    - name: Trivy Scan
+      run: trivy backend:latest
+
+    - name: Tag Docker image (dev)
+      run: docker tag backend:latest docker.io/raju00533/backend:dev-latest
+
+    - name: Push Docker image (dev)
+      run: docker push docker.io/raju00533/backend:dev-latest
+
+    - name: Run Docker image (dev)
+      run: docker run -d -p 4000:4000 --name backend_dev docker.io/raju00533/backend:dev-latest
+
     - name: Increase version in package.json
       run: |
         npm version patch -m "Bump version to %s"
-
     - name: Push changes to repository
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: "Bump version and Docker image tag"
         commit_user_name: "Raju00533"
         commit_user_email: "raju12ghimire@gmail.com"
+
+
