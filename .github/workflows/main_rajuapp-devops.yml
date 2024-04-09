@@ -38,11 +38,14 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       run: |
-        sonar-scanner \
-          -Dsonar.projectKey=my_project \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=$SONAR_HOST_URL \
-          -Dsonar.login=$SONAR_TOKEN
+            docker run \
+            --rm \
+            -e SONAR_TOKEN=${{ secrets.SONAR_TOKEN }} \
+            -e SONAR_HOST_URL=${{ secrets.SONAR_HOST_URL }} \
+            -v "$(pwd):/usr/src" \
+            sonarsource/sonar-scanner-cli \
+            -Dsonar.projectKey=my_project \
+            -Dsonar.sources=.
     - name: Build Docker image
       run: docker build -t backend:latest .
 
